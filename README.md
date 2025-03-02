@@ -106,9 +106,9 @@ This report summarizes the process of deploying a Dockerized web application on 
      docker run -d -p 81:80 calvinberndt/my-calculator:latest
      ```
    - Added security group rule to allow inbound traffic on port 81
-   - Accessed the application via:
+   - Accessed the application via: IP changes, so make sure to find what the public IP is on EC2 instance. EC2 public IPs change when instances are stopped and started unless you're using Elastic IPs.
      ```
-     http://3.147.77.201:81/
+     http://[ec2-public-ip]:81/
      ```
 
 **Challenges and Solutions**
@@ -139,4 +139,117 @@ This report summarizes the process of deploying a Dockerized web application on 
 
 **Conclusion**
 By following these steps, we successfully deployed the calculator application on an AWS EC2 instance using Docker. The process highlighted the importance of architecture compatibility, network configuration, and cloud security settings. This deployment approach provides a scalable and portable solution for hosting web applications in the cloud.
+
+
+
+**Part 2: Deploying a Calculator Web Application using Kubernetes**
+
+**Introduction**
+This section covers deploying the same calculator application using Kubernetes for improved scalability and management. After initial challenges with EC2 resource limitations, the deployment was successfully implemented on a local Minikube environment.
+
+**Process Overview**
+
+1. **Initial EC2 Kubernetes Setup Attempt**
+   - Connected to the EC2 instance via SSH (same as Part 1)
+   - Created an installation script for Kubernetes components:
+     ```bash
+     # Install kubectl
+     curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+     chmod +x kubectl
+     sudo mv kubectl /usr/local/bin/
+
+     # Install Minikube
+     curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+     sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+     # Start Minikube
+     minikube start --driver=docker
+     ```
+   - Made the script executable and executed it:
+     ```bash
+     chmod +x install_kubernetes.sh
+     ./install_kubernetes.sh
+     ```
+
+2. **Creating a Multi-Architecture Docker Image**
+   - Built a Docker image compatible with both ARM64 and AMD64 architectures using a build script
+   - Made the script executable:
+     ```bash
+     chmod +x build-multi-arch.sh
+     ```
+   - Ran the script to build and push the multi-architecture image:
+     ```bash
+     ./build-multi-arch.sh
+     ```
+
+3. **Local Kubernetes Deployment**
+   - Fixed Docker context issues:
+     ```bash
+     docker context use default
+     ```
+   - Applied the Kubernetes deployment configuration:
+     ```bash
+     kubectl apply -f calculator-deployment.yaml
+     ```
+   - Refreshed failing pods:
+     ```bash
+     kubectl delete pods -l app=calculator
+     ```
+   - Verified pod status:
+     ```bash
+     kubectl get pods
+     ```
+   - The pods were now successfully running:
+     - `calculator-deployment-76dcdd5fb8-m26rs`: 1/1 Ready
+     - `calculator-deployment-76dcdd5fb8-thgzj`: 1/1 Ready
+
+4. **Accessing the Kubernetes Application**
+   - Obtained the Minikube IP address:
+     ```bash
+     minikube ip
+     ```
+   - Started the service for external access:
+     ```bash
+     minikube service calculator-service
+     ```
+   - Accessed the application via browser at:
+     ```
+     http://<minikube-ip>:30080
+     ```
+
+**Challenges and Solutions**
+
+1. **EC2 Resource Limitations**
+   - Challenge: The t2.micro instance type only has 1 CPU core, but Minikube requires at least 2
+   - Solution: Switched to local Minikube deployment instead of EC2
+
+2. **Image Architecture Compatibility**
+   - Challenge: Image built on ARM64 (M-series Mac) was incompatible with deployment environment
+   - Solution: Created a multi-architecture image supporting both ARM64 and AMD64
+
+3. **Docker Context Issues**
+   - Challenge: Docker context was not properly set for local deployment
+   - Solution: Explicitly switched to default Docker context before deployment
+
+4. **Port Forwarding Issues**
+   - Challenge: EC2 instance had port forwarding issues, possibly related to HTTPS setup
+   - Solution: Used local Kubernetes deployment with proper service exposure
+
+**Key Learnings**
+- **Multi-Architecture Container Images:** Building images that support multiple CPU architectures enables deployment flexibility across different environments.
+- **Kubernetes Resource Requirements:** Understanding the minimum resource requirements for Kubernetes components helps avoid deployment failures.
+- **Docker Context Management:** Proper Docker context configuration is critical when working with both local and remote environments.
+- **Service Exposure in Kubernetes:** Using NodePort services provides a straightforward way to access applications from outside the cluster.
+
+**Conclusion**
+Despite initial challenges with EC2 deployment, the calculator application was successfully deployed using Kubernetes on a local Minikube environment. The implementation demonstrated the importance of architecture compatibility, resource management, and proper service configuration in Kubernetes deployments.
+
+
+
+
+
+
+
+
+
 

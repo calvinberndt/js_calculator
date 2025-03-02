@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calculator-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: calculator
+  template:
+    metadata:
+      labels:
+        app: calculator
+    spec:
+      containers:
+      - name: calculator
+        image: calvinberndt/my-calculator-flex:latest  # Updated to use the new multi-architecture image
+        ports:
+        - containerPort: 80 # Port the container listens on
+        resources:
+          requests: # Minimum resources required
+            memory: "64Mi"
+            cpu: "250m"
+          limits: # Maximum resources allowed
+            memory: "128Mi"
+            cpu: "500m"
+      # Uncomment if using private Docker Hub repository
+      # imagePullSecrets:
+      # - name: regcred
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: calculator-service
+spec:
+  type: NodePort # Expose the service on a NodePort
+  selector:
+    app: calculator
+  ports:
+  - port: 80 
+    targetPort: 80 
+    nodePort: 30080 # Port the service listens on
